@@ -25,8 +25,6 @@ public class Genetic_Algorithm {
 
     // Testing configurations
     boolean printData = false;
-    boolean compressScores = false;
-    boolean expandScores = true;
     boolean printScores = false;
     boolean displayGrids = false;
     boolean limitIterations = true;
@@ -129,96 +127,68 @@ public class Genetic_Algorithm {
 
     /**
      * Assigns a numerical fitness score to each grid in the reproduction pool.
-     * - two points added per duplicated value per row, column and region
      */
     private int determineFitness(Grid grid) {
-        int score = 0;
-        ArrayList<HashMap<Integer, Integer>> bandFitness = new ArrayList<>();
-        ArrayList<HashMap<Integer, Integer>> stackFitness = new ArrayList<>();
-        ArrayList<HashMap<Integer, Integer>> regionFitness = new ArrayList<>();
 
-        for (int i = 1; i <= 9; i++) {
-            bandFitness.add(new HashMap<>());
-            stackFitness.add(new HashMap<>());
-            regionFitness.add(new HashMap<>());
+        // Data Gathering
 
-            for (int j = 1; j <= 9; j++) {
-                bandFitness.get(bandFitness.size() - 1).put(j, -1);
-            }
-            for (int j = 1; j <= 9; j++) {
-                stackFitness.get(stackFitness.size() - 1).put(j, -1);
-            }
-            for (int j = 1; j <= 9; j++) {
-                regionFitness.get(regionFitness.size() - 1).put(j, -1);
+        // A hashmap containing value counts is initialized for each
+        // of 27 grid structures (9 bands, 9 stacks, 9 regions)
+        ArrayList<HashMap<Integer, Integer>> bandValueCounts = new ArrayList<>();
+        ArrayList<HashMap<Integer, Integer>> stackValueCounts = new ArrayList<>();
+        ArrayList<HashMap<Integer, Integer>> regionValueCounts = new ArrayList<>();
+
+        // Populating array lists with hashmaps
+        for (int i = 1; i <= 9; i++) { // Structure
+            bandValueCounts.add(new HashMap<>());
+            stackValueCounts.add(new HashMap<>());
+            regionValueCounts.add(new HashMap<>());
+
+            // Start by setting every value count to -1
+            for (int j = 1; j <= 9; j++) { // Hashmap
+                bandValueCounts.get(bandValueCounts.size() - 1).put(j, -1);
+                stackValueCounts.get(stackValueCounts.size() - 1).put(j, -1);
+                regionValueCounts.get(regionValueCounts.size() - 1).put(j, -1);
             }
         }
 
-        for (int i = 0; i < grid.getBandList().size(); i++) {
-            for (Square square : grid.getBandList().get(i).getSquareList()) {
-                bandFitness.get(i).put(square.getValue(), bandFitness.get(i).get(square.getValue()) + 1);
-            }
-        }
-        for (int i = 0; i < grid.getStackList().size(); i++) {
-            for (Square square : grid.getStackList().get(i).getSquareList()) {
-                stackFitness.get(i).put(square.getValue(), stackFitness.get(i).get(square.getValue()) + 1);
-            }
-        }
-        for (int i = 0; i < grid.getRegionList().size(); i++) {
-            for (Square square : grid.getRegionList().get(i).getSquareList()) {
-                regionFitness.get(i).put(square.getValue(), regionFitness.get(i).get(square.getValue()) + 1);
-            }
-        }
-
-//        for (HashMap<Integer, Integer> h : bandFitness) {
-//            System.out.println(h.toString());
-//        }
-
+        // Setting actual value counts for each square in each structure
         for (int i = 0; i < 9; i++) {
-            for (int j = 1; j <= 9; j++) {
-                int multiplier = bandFitness.get(i).get(j);
-                if (multiplier == -1) {
-                    score += 5;
-                } else {
-                    score += multiplier * 3;
-                }
-                multiplier = stackFitness.get(i).get(j);
-                if (multiplier == -1) {
-                    score += 5;
-                } else {
-                    score += multiplier * 3;
-                }
-                multiplier = regionFitness.get(i).get(j);
-                if (multiplier == -1) {
-                    score += 5;
-                } else {
-                    score += multiplier * 3;
-                }
+            for (Square square : grid.getBandList().get(i).getSquareList()) {
+                bandValueCounts.get(i).put(square.getValue(), bandValueCounts.get(i).get(square.getValue()) + 1);
+            }
+            for (Square square : grid.getStackList().get(i).getSquareList()) {
+                stackValueCounts.get(i).put(square.getValue(), stackValueCounts.get(i).get(square.getValue()) + 1);
+            }
+            for (Square square : grid.getRegionList().get(i).getSquareList()) {
+                regionValueCounts.get(i).put(square.getValue(), regionValueCounts.get(i).get(square.getValue()) + 1);
             }
         }
 
-        if (compressScores) {
-            score /= 4;
+
+        // Score Assignment
+
+        ArrayList<Integer> multipliers = new ArrayList<>();
+
+        // Raw value count data is added to multipliers array list
+        for (int i = 0; i < 9; i++) { // Structure
+            for (int j = 1; j <= 9; j++) { // Hashmap
+                multipliers.add(bandValueCounts.get(i).get(j));
+                multipliers.add(stackValueCounts.get(i).get(j));
+                multipliers.add(regionValueCounts.get(i).get(j));
+            }
         }
-        if (expandScores) {
-            score *= 5;
+
+        // Score is assigned based on missing and duplicated values
+        int score = 0;
+        for (Integer multiplier : multipliers) {
+            score += multiplier == -1 ? 10 : multiplier * 10;
         }
+
         if (printScores) {
             System.out.println("Score :" + score);
         }
         return score;
-
-        // This is for testing purposes only, but could be worked into a fitness function!
-//        for (Grid g : reproductionPool) {
-//            int[] counts = new int[]{0, 0, 0, 0, 0, 0, 0, 0, 0};
-//            for (Square square : g.getSquareList()) {
-//                counts[square.getValue() - 1]++;
-//            }
-//            for (int k = 0; k < 9; k++){
-//                System.out.println(counts[k]);
-//
-//            }
-//            System.out.println();
-//        }
     }
 
     /**
@@ -253,7 +223,7 @@ public class Genetic_Algorithm {
      */
     private void reproduce() {
 
-        double unPreSolvedSquares = 0;
+        double unPreSolvedSquares = 0; // Collected in Crossover but used in Mutation
 
         // Crossover
 
@@ -267,7 +237,6 @@ public class Genetic_Algorithm {
             } else {
                 unPreSolvedSquares++;
             }
-//            newGrid.getSquareList().get(i).setPreSolved(fittestA.getSquareList().get(i).isPreSolved());
         }
 
         for (int i = crossoverPoint; i < 81; i++) {
@@ -277,27 +246,26 @@ public class Genetic_Algorithm {
             } else {
                 unPreSolvedSquares++;
             }
-//            newGrid.getSquareList().get(i).setPreSolved(fittestB.getSquareList().get(i).isPreSolved());
         }
 
 
         // Mutation
 
-        int mutationCount = (int) Math.round(this.mutationRate * unPreSolvedSquares), newPoint;
+        int mutationCount = (int) Math.round(this.mutationRate * unPreSolvedSquares), mutationPoint;
         ArrayList<Integer> mutationPoints = new ArrayList<>(mutationCount);
 
         // Create mutation points
         for (int i = 0; i < mutationCount; i++) {
-            newPoint = random.nextInt(80); // Random mutation point between 0 and 80
-            while (newGrid.getSquareList().get(newPoint).isPreSolved() ||
-                    mutationPoints.contains(newPoint)) {
+            mutationPoint = random.nextInt(80); // Random mutation point between 0 and 80
+            while (newGrid.getSquareList().get(mutationPoint).isPreSolved() ||
+                    mutationPoints.contains(mutationPoint)) {
                 // Will not place point on pre-solved square or square already selected for mutation
-                newPoint = random.nextInt(80);
+                mutationPoint = random.nextInt(80);
             }
-            mutationPoints.add(newPoint);
+            mutationPoints.add(mutationPoint);
 
             // Set mutation at respective mutation point
-            newGrid.getSquareList().get(newPoint).setValue(random.nextInt(8) + 1); // Random mutation between 1 and 9
+            newGrid.getSquareList().get(mutationPoint).setValue(random.nextInt(8) + 1); // Random mutation between 1 and 9
         }
 
 
@@ -352,6 +320,5 @@ public class Genetic_Algorithm {
         if (displayGrids) {
             newGrid.displayGrid(false);
         }
-
     }
 }
