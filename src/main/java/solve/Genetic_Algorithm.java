@@ -17,7 +17,9 @@ import java.util.Random;
  */
 public class Genetic_Algorithm {
 
-    private final int individuals = 100, mutations = 3, iterationLimit = 500000;
+    private final int individuals = 100, iterationLimit = 500000;
+    private final double mutationRate = 0.05;
+
     private int latestGeneration = 1, bestFitnessScore = 10000, earlyFitnessScore = 10000, iterations = 0;
     private Grid unsolved, solution, fittestA = null, fittestB = null;
 
@@ -251,6 +253,8 @@ public class Genetic_Algorithm {
      */
     private void reproduce() {
 
+        double unPreSolvedSquares = 0;
+
         // Crossover
 
         int crossoverPoint = random.nextInt(80); // Random crossover point between 0 and 80
@@ -258,30 +262,42 @@ public class Genetic_Algorithm {
 
         for (int i = 0; i < crossoverPoint; i++) {
             newGrid.getSquareList().get(i).setValue(fittestA.getSquareList().get(i).getValue());
-            newGrid.getSquareList().get(i).setPreSolved(fittestA.getSquareList().get(i).isPreSolved());
+            if (fittestA.getSquareList().get(i).isPreSolved()) {
+                newGrid.getSquareList().get(i).setPreSolved(true);
+            } else {
+                unPreSolvedSquares++;
+            }
+//            newGrid.getSquareList().get(i).setPreSolved(fittestA.getSquareList().get(i).isPreSolved());
         }
 
         for (int i = crossoverPoint; i < 81; i++) {
             newGrid.getSquareList().get(i).setValue(fittestB.getSquareList().get(i).getValue());
-            newGrid.getSquareList().get(i).setPreSolved(fittestB.getSquareList().get(i).isPreSolved());
+            if (fittestB.getSquareList().get(i).isPreSolved()) {
+                newGrid.getSquareList().get(i).setPreSolved(true);
+            } else {
+                unPreSolvedSquares++;
+            }
+//            newGrid.getSquareList().get(i).setPreSolved(fittestB.getSquareList().get(i).isPreSolved());
         }
 
 
         // Mutation
 
-        // Create mutation points
-        int[] mutationPoints = new int[this.mutations];
-        for (int i = 0; i < mutationPoints.length; i++) {
-            mutationPoints[i] = random.nextInt(80); // Random mutation point between 0 and 80
-            // ^ Could produce the same number more than once
-        }
+        int mutationCount = (int) Math.round(this.mutationRate * unPreSolvedSquares), newPoint;
+        ArrayList<Integer> mutationPoints = new ArrayList<>(mutationCount);
 
-        // Set mutations at mutation points
-        for (int mutationPoint : mutationPoints) {
-            if (!newGrid.getSquareList().get(mutationPoint).isPreSolved()) { // Will not mutate a pre-solved square
-                newGrid.getSquareList().get(mutationPoint).setValue(random.nextInt(8) + 1); // Random mutation between 1 and 9
-                // ^ Should a new mutation be included in case it was set to cover a pre-solved square?
+        // Create mutation points
+        for (int i = 0; i < mutationCount; i++) {
+            newPoint = random.nextInt(80); // Random mutation point between 0 and 80
+            while (newGrid.getSquareList().get(newPoint).isPreSolved() ||
+                    mutationPoints.contains(newPoint)) {
+                // Will not place point on pre-solved square or square already selected for mutation
+                newPoint = random.nextInt(80);
             }
+            mutationPoints.add(newPoint);
+
+            // Set mutation at respective mutation point
+            newGrid.getSquareList().get(newPoint).setValue(random.nextInt(8) + 1); // Random mutation between 1 and 9
         }
 
 
