@@ -1,13 +1,13 @@
 package solve;
 
 import main.Log;
-import structure.*;
+import structure.Grid;
+import structure.Square;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * First attempt at a solving algorithm using a stochastic technique.
@@ -128,9 +128,6 @@ public class Genetic_Algorithm {
     /**
      * Assigns a numerical fitness score to each grid in the reproduction pool.
      * - two points added per duplicated value per row, column and region
-     *
-     * @param grid
-     * @return
      */
     private int determineFitness(Grid grid) {
         int score = 0;
@@ -253,9 +250,10 @@ public class Genetic_Algorithm {
      * Creates offspring to return to populace
      */
     private void reproduce() {
+
         // Crossover
 
-        int crossoverPoint = random.nextInt(fittestA.getSquareList().size() - 1) + 1;
+        int crossoverPoint = random.nextInt(80); // Random crossover point between 0 and 80
         Grid newGrid = new Grid();
 
         for (int i = 0; i < crossoverPoint; i++) {
@@ -263,73 +261,81 @@ public class Genetic_Algorithm {
             newGrid.getSquareList().get(i).setPreSolved(fittestA.getSquareList().get(i).isPreSolved());
         }
 
-        for (int i = crossoverPoint; i < fittestB.getSquareList().size(); i++) {
+        for (int i = crossoverPoint; i < 81; i++) {
             newGrid.getSquareList().get(i).setValue(fittestB.getSquareList().get(i).getValue());
-            newGrid.getSquareList().get(i).setPreSolved(fittestA.getSquareList().get(i).isPreSolved());
+            newGrid.getSquareList().get(i).setPreSolved(fittestB.getSquareList().get(i).isPreSolved());
         }
 
 
         // Mutation
 
-        int mutationCount = 0;
+        // Create mutation points
         int[] mutationPoints = new int[this.mutations];
         for (int i = 0; i < mutationPoints.length; i++) {
-            mutationPoints[i] = random.nextInt(80);
+            mutationPoints[i] = random.nextInt(80); // Random mutation point between 0 and 80
+            // ^ Could produce the same number more than once
         }
 
-        for (int i = 0; i < mutationPoints.length; i++) {
-            if (!newGrid.getSquareList().get(mutationPoints[i]).isPreSolved()) {
-                newGrid.getSquareList().get(mutationPoints[i]).setValue(random.nextInt(8) + 1);
+        // Set mutations at mutation points
+        for (int mutationPoint : mutationPoints) {
+            if (!newGrid.getSquareList().get(mutationPoint).isPreSolved()) { // Will not mutate a pre-solved square
+                newGrid.getSquareList().get(mutationPoint).setValue(random.nextInt(8) + 1); // Random mutation between 1 and 9
+                // ^ Should a new mutation be included in case it was set to cover a pre-solved square?
             }
         }
 
-        // Handle Generations
 
-        int genA = fittestA.getGeneration();
-        int genB = fittestB.getGeneration();
-        int genNext = Math.max(genA, genB) + 1;
+        // Generations
+
+        // Set new generation
+        int genNext = Math.max(fittestA.getGeneration(), fittestB.getGeneration()) + 1;
         newGrid.setGeneration(genNext);
+
+        // Update latest generation
         if (genNext > this.latestGeneration) {
             this.latestGeneration = genNext;
         }
 
-//        newGrid.displayGrid(false);
-//        System.out.println(this.determineFitness(newGrid));
 
-        // Return new grid to reproductionPool
+        // Update Reproduction Pool
 
-        AtomicInteger maxFitness = new AtomicInteger();
-        this.reproductionPool.forEach((n, m) -> {
-            if (m > maxFitness.get()) {
-                maxFitness.set(m);
-            }
-        });
-        Grid unfittest = null;
+        // Find worst-scoring individual in reproduction pool
+        Grid leastFit = null;
+        int maxFitness = 0;
+
         for (Map.Entry<Grid, Integer> entry : this.reproductionPool.entrySet()) {
-            if (entry.getValue() == maxFitness.intValue()) {
-                unfittest = entry.getKey();
-                break;
-
+            if (entry.getValue() > maxFitness) {
+                maxFitness = entry.getValue();
+                leastFit = entry.getKey();
             }
         }
+
+        // Replace worst-scoring individual with new individual
         int newFitness = this.determineFitness(newGrid);
+
+        if (newFitness <= maxFitness) { // Replacement only occurs if new individual scores equal to or better than worst
+            this.reproductionPool.remove(leastFit);
+            this.reproductionPool.put(newGrid, newFitness);
+        }
+
+        // Update best recorded fitness score, if applicable
+        if (newFitness <= this.bestFitnessScore) {
+            this.bestFitnessScore = newFitness;
+        }
+
+        // Update solution, if applicable
+        if (this.bestFitnessScore == 0) {
+            this.solution = newGrid;
+        }
+
+
+        // For testing purposes
         if (printData) {
-            System.out.println("new: " + newFitness + " old: " + maxFitness.intValue() + " Latest gen: " + this.latestGeneration + " Iterations: " + this.iterations);
+            System.out.println("new: " + newFitness + " old: " + maxFitness + " Latest gen: " + this.latestGeneration + " Iterations: " + this.iterations);
         }
-        if (newFitness <= maxFitness.intValue()) {
-            this.reproductionPool.remove(unfittest);
-            this.reproductionPool.put(newGrid, this.determineFitness(newGrid));
-
-            if (displayGrids) {
-                newGrid.displayGrid(false);
-            }
-
-            if (newFitness <= this.bestFitnessScore) {
-                this.bestFitnessScore = newFitness;
-            }
-            if (this.bestFitnessScore == 0) {
-                this.solution = newGrid;
-            }
+        if (displayGrids) {
+            newGrid.displayGrid(false);
         }
+
     }
 }
