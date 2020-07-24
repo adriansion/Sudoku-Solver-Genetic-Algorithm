@@ -17,12 +17,22 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class Genetic_Algorithm {
 
-    private final int individuals = 100, mutations = 3;
+    private final int individuals = 100, mutations = 3, iterationLimit = 500000;
     private int latestGeneration = 1, bestFitnessScore = 10000, earlyFitnessScore = 10000, iterations = 0;
-    private Grid unsolved, solution, fittestPrimary = null, fittestSecondary = null;
-    boolean printData = false, compressScores = false, expandScores = true, printScores = false, displayGrids = false;
-    private HashMap<Grid, Integer> reproductionPool = new HashMap<>();
-    Random random = new Random();
+    private Grid unsolved, solution, fittestA = null, fittestB = null;
+
+    // Testing configurations
+    boolean printData = false;
+    boolean compressScores = false;
+    boolean expandScores = true;
+    boolean printScores = false;
+    boolean displayGrids = false;
+    boolean limitIterations = true;
+
+
+    private final HashMap<Grid, Integer> reproductionPool = new HashMap<>();
+    private final Random random = new Random();
+
 
     public Grid solve(Grid grid) {
         this.unsolved = grid;
@@ -32,21 +42,22 @@ public class Genetic_Algorithm {
         reproductionPool.forEach((n, m) -> reproductionPool.put(n, this.determineFitness(n)));
         Log.logger.info("Production of first generation complete.");
 
-
-//        while (this.bestFitnessScore != 0) {
-//            iterations++;
-//            this.runTournament();
-//            this.reproduce();
-//
-//        }
-
-        for (iterations = 1; iterations <= 1000000; iterations++) {
-            this.runTournament();
-            this.reproduce();
-            if (bestFitnessScore != 10000 && earlyFitnessScore == 10000) {
-                earlyFitnessScore = bestFitnessScore;
+        if (limitIterations) {
+            for (iterations = 1; iterations <= iterationLimit; iterations++) {
+                this.runTournament();
+                this.reproduce();
+                if (bestFitnessScore != 10000 && earlyFitnessScore == 10000) {
+                    earlyFitnessScore = bestFitnessScore;
+                }
+            }
+        } else {
+            while (this.bestFitnessScore != 0) {
+                iterations++;
+                this.runTournament();
+                this.reproduce();
             }
         }
+
 
         Log.logger.info("Sample Early Score: " + this.earlyFitnessScore);
         Log.logger.info("Best Fitness Score: " + this.bestFitnessScore);
@@ -216,52 +227,25 @@ public class Genetic_Algorithm {
      */
     private void runTournament() {
 
-        HashMap<Grid, Integer> subPopA = new HashMap<>(), subPopB = new HashMap<>();
-        this.reproductionPool.forEach((n, m) -> { // Condense this to eliminate subPopB
-            if (subPopA.size() < this.individuals / 2 && random.nextInt(1) == 1) {
-                subPopA.put(n, m);
-            } else if (subPopB.size() == this.individuals / 2) {
-                subPopA.put(n, m);
-            } else {
-                if (random.nextInt(1) == 1) {
-                    subPopA.put(n, m);
-                } else {
-                    subPopB.put(n, m);
-                }
-            }
+        // Organize sub-population
 
-        });
+        HashMap<Grid, Integer> subPop = new HashMap<>();
+        ArrayList<Map.Entry<Grid, Integer>> poolGrids = new ArrayList<>(reproductionPool.entrySet());
 
-        // Starting with full Elitism
-        ArrayList<Integer> fitnesses = new ArrayList<>();
-        subPopA.forEach((n, m) -> fitnesses.add(m));
-        fitnesses.sort(null);
-//        fitnesses.forEach(System.out::println);
-
-
-        for (Map.Entry<Grid, Integer> entry : subPopA.entrySet()) {
-            if (entry.getValue().equals(fitnesses.get(0))) {
-                this.fittestPrimary = entry.getKey();
-//                System.out.println("Primary Fitness Score: " + entry.getValue());
-                break;
-            }
-        }
-        for (Map.Entry<Grid, Integer> entry : subPopA.entrySet()) {
-            if (entry.getValue().equals(fitnesses.get(1)) && !entry.getKey().equals(fittestPrimary)) {
-                this.fittestSecondary = entry.getKey();
-//                System.out.println("Secondary Fitness Score: " + entry.getValue());
-                break;
-            }
+        for (int i = 0; i < this.individuals / 2; i++) {
+            int index = random.nextInt(poolGrids.size());
+            subPop.put(poolGrids.get(index).getKey(), poolGrids.get(index).getValue());
+            poolGrids.remove(index);
         }
 
-//        System.out.println( fittestPrimary + " " + fittestSecondary);
 
+        // Select parents from sub-population
 
-//        subPopA.forEach((n, m) -> System.out.println("A: " + n + " " + m));
-//        System.out.println();
-//        subPopB.forEach((n, m) -> System.out.println("B: " + n + " " + m));
-//        System.out.println(subPopA.size() + " " + subPopB.size());
+        ArrayList<Map.Entry<Grid, Integer>> subPopGrids = new ArrayList<>(subPop.entrySet());
+        subPopGrids.sort(Map.Entry.comparingByValue());
 
+        this.fittestA = poolGrids.get(0).getKey();
+        this.fittestB = poolGrids.get(1).getKey();
 
     }
 
@@ -271,17 +255,17 @@ public class Genetic_Algorithm {
     private void reproduce() {
         // Crossover
 
-        int crossoverPoint = random.nextInt(fittestPrimary.getSquareList().size() - 1) + 1;
+        int crossoverPoint = random.nextInt(fittestA.getSquareList().size() - 1) + 1;
         Grid newGrid = new Grid();
 
         for (int i = 0; i < crossoverPoint; i++) {
-            newGrid.getSquareList().get(i).setValue(fittestPrimary.getSquareList().get(i).getValue());
-            newGrid.getSquareList().get(i).setPreSolved(fittestPrimary.getSquareList().get(i).isPreSolved());
+            newGrid.getSquareList().get(i).setValue(fittestA.getSquareList().get(i).getValue());
+            newGrid.getSquareList().get(i).setPreSolved(fittestA.getSquareList().get(i).isPreSolved());
         }
 
-        for (int i = crossoverPoint; i < fittestSecondary.getSquareList().size(); i++) {
-            newGrid.getSquareList().get(i).setValue(fittestSecondary.getSquareList().get(i).getValue());
-            newGrid.getSquareList().get(i).setPreSolved(fittestPrimary.getSquareList().get(i).isPreSolved());
+        for (int i = crossoverPoint; i < fittestB.getSquareList().size(); i++) {
+            newGrid.getSquareList().get(i).setValue(fittestB.getSquareList().get(i).getValue());
+            newGrid.getSquareList().get(i).setPreSolved(fittestA.getSquareList().get(i).isPreSolved());
         }
 
 
@@ -301,8 +285,8 @@ public class Genetic_Algorithm {
 
         // Handle Generations
 
-        int genA = fittestPrimary.getGeneration();
-        int genB = fittestSecondary.getGeneration();
+        int genA = fittestA.getGeneration();
+        int genB = fittestB.getGeneration();
         int genNext = Math.max(genA, genB) + 1;
         newGrid.setGeneration(genNext);
         if (genNext > this.latestGeneration) {
