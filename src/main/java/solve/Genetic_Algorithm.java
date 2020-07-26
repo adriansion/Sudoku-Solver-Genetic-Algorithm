@@ -17,14 +17,18 @@ import java.util.Random;
  */
 public class Genetic_Algorithm {
 
-    private final int individuals = 100, iterationLimit = 500000;
+    private final int individuals = 100, iterationLimit = 50000000;
     private final double mutationRate = 0.05;
 
-    private int latestGeneration = 1, bestFitnessScore = 10000, earlyFitnessScore = 10000, iterations = 0;
-    private Grid unsolved, solution, fittestA = null, fittestB = null;
+    private int latestGeneration = 1, bestFitnessScore = 10000, iterations = 0;
+    private Integer earlyFitnessScore;
+    private Grid unsolved, solution;
+
+    private ArrayList<Grid> parents = new ArrayList<>(); // Consider having this returned from tournament, and passed to reproduce
 
     // Testing configurations
-    boolean printData = false;
+    boolean printData = true;
+    boolean printAllData = false;
     boolean printScores = false;
     boolean displayGrids = false;
     boolean limitIterations = true;
@@ -46,8 +50,11 @@ public class Genetic_Algorithm {
             for (iterations = 1; iterations <= iterationLimit; iterations++) {
                 this.runTournament();
                 this.reproduce();
-                if (bestFitnessScore != 10000 && earlyFitnessScore == 10000) {
+                if (bestFitnessScore != 10000 && earlyFitnessScore == null) {
                     earlyFitnessScore = bestFitnessScore;
+                }
+                if (iterations % (iterationLimit / 100) == 0) {
+                    System.out.println("Iterations: " + (int) (((double) iterations / (double) iterationLimit) * 100) + "% complete");
                 }
             }
         } else {
@@ -69,12 +76,12 @@ public class Genetic_Algorithm {
 
     /**
      * This method will create a specified number of theoretically possible solutions to the puzzle.
-     * Each solution is an individual and each non-presolved square is a gene.
+     * Each solution is an individual and each non pre-solved square is a gene.
      * Each solution's genes will be randomly decided, according to the following two restrictions,
      * in their inception:
-     * 1. Non-presolved squares shall be populated with integers between 1 and 9.
-     * 2. Non-presolved squares shall not be populated with integers that conflict with the integers
-     * in the presolved squares' respective rows, columns or regions.
+     * 1. Non pre-solved squares shall be populated with integers between 1 and 9.
+     * 2. Non pre-solved squares shall not be populated with integers that conflict with the integers
+     * in the pre-solved squares' respective rows, columns or regions.
      */
     private void produceFirstGeneration(int individuals) {
         for (int i = 0; i < individuals; i++) {
@@ -186,7 +193,7 @@ public class Genetic_Algorithm {
         }
 
         if (printScores) {
-            System.out.println("Score :" + score);
+            System.out.println("Score: " + score);
         }
         return score;
     }
@@ -194,28 +201,46 @@ public class Genetic_Algorithm {
     /**
      * Determines the individuals to reproduce and crossover.
      */
-    private void runTournament() {
+    private void runTournament() { // This could be parallelized
+        // Could the array lists be replaced by some direct reference to entry sets?
 
-        // Organize sub-population
+        this.parents.clear();
 
-        HashMap<Grid, Integer> subPop = new HashMap<>();
-        ArrayList<Map.Entry<Grid, Integer>> poolGrids = new ArrayList<>(reproductionPool.entrySet());
-
-        for (int i = 0; i < this.individuals / 2; i++) {
-            int index = random.nextInt(poolGrids.size());
-            subPop.put(poolGrids.get(index).getKey(), poolGrids.get(index).getValue());
-            poolGrids.remove(index);
+        // Determine how many parents to have reproduce, based on the complete population size
+        int parentCount = 2;//this.individuals / 25;
+        if (((double) parentCount) % 2 != 0) {
+            parentCount++;
         }
 
+        // Select parents and re-populate parent array list
+        for (int i = 0; i < parentCount; i++) { // optimize this by taking data structures out of the loop
 
-        // Select parents from sub-population
+            // Organize sub-population
 
-        ArrayList<Map.Entry<Grid, Integer>> subPopGrids = new ArrayList<>(subPop.entrySet());
-        subPopGrids.sort(Map.Entry.comparingByValue());
+            HashMap<Grid, Integer> subPop = new HashMap<>(); // Total sub-population of reproduction pool
+            ArrayList<Map.Entry<Grid, Integer>> poolGrids = new ArrayList<>(reproductionPool.entrySet()); // Copy of reproduction pool entries
 
-        this.fittestA = poolGrids.get(0).getKey();
-        this.fittestB = poolGrids.get(1).getKey();
+            // Place a random individual from the reproduction pool (copy) into sub-population
+            // Remove that individual from reproduction pool copy so they are not selected twice
+            for (int j = 0; j < this.individuals / 2; j++) {
+                int index = random.nextInt(poolGrids.size());
+                subPop.put(poolGrids.get(index).getKey(), poolGrids.get(index).getValue());
+                poolGrids.remove(index);
+            }
 
+
+            // Select parent from sub-population
+
+            ArrayList<Map.Entry<Grid, Integer>> subPopGrids = new ArrayList<>(subPop.entrySet()); // Copy of sub-population entries
+            subPopGrids.sort(Map.Entry.comparingByValue()); // Sorted to easily collect best score (index 0)
+
+            if (!this.parents.contains(subPopGrids.get(0).getKey())) {
+                this.parents.add(subPopGrids.get(0).getKey());
+            } else {
+                i--;
+            }
+
+        }
     }
 
     /**
@@ -223,102 +248,117 @@ public class Genetic_Algorithm {
      */
     private void reproduce() {
 
-        double unPreSolvedSquares = 0; // Collected in Crossover but used in Mutation
+        while (!this.parents.isEmpty()) {
 
-        // Crossover
+            Grid pB = this.parents.remove(0), pA = this.parents.remove(0); // consider making parents a stack
 
-        int crossoverPoint = random.nextInt(80); // Random crossover point between 0 and 80
-        Grid newGrid = new Grid();
 
-        for (int i = 0; i < crossoverPoint; i++) {
-            newGrid.getSquareList().get(i).setValue(fittestA.getSquareList().get(i).getValue());
-            if (fittestA.getSquareList().get(i).isPreSolved()) {
-                newGrid.getSquareList().get(i).setPreSolved(true);
-            } else {
-                unPreSolvedSquares++;
+            double unPreSolvedSquares = 0; // Collected in Crossover but used in Mutation
+
+            // Crossover
+
+            int crossoverPoint = random.nextInt(80); // Random crossover point between 0 and 80
+            Grid newGrid = new Grid();
+
+            for (int i = 0; i < crossoverPoint; i++) {
+                newGrid.getSquareList().get(i).setValue(pA.getSquareList().get(i).getValue());
+                if (pA.getSquareList().get(i).isPreSolved()) {
+                    newGrid.getSquareList().get(i).setPreSolved(true);
+                } else {
+                    unPreSolvedSquares++;
+                }
             }
-        }
 
-        for (int i = crossoverPoint; i < 81; i++) {
-            newGrid.getSquareList().get(i).setValue(fittestB.getSquareList().get(i).getValue());
-            if (fittestB.getSquareList().get(i).isPreSolved()) {
-                newGrid.getSquareList().get(i).setPreSolved(true);
-            } else {
-                unPreSolvedSquares++;
+            for (int i = crossoverPoint; i < 81; i++) {
+                newGrid.getSquareList().get(i).setValue(pB.getSquareList().get(i).getValue());
+                if (pB.getSquareList().get(i).isPreSolved()) {
+                    newGrid.getSquareList().get(i).setPreSolved(true);
+                } else {
+                    unPreSolvedSquares++;
+                }
             }
-        }
 
 
-        // Mutation
+            // Mutation
 
-        int mutationCount = (int) Math.round(this.mutationRate * unPreSolvedSquares), mutationPoint;
-        ArrayList<Integer> mutationPoints = new ArrayList<>(mutationCount);
+            int mutationCount = (int) Math.round(this.mutationRate * unPreSolvedSquares), mutationPoint;
+            ArrayList<Integer> mutationPoints = new ArrayList<>(mutationCount);
 
-        // Create mutation points
-        for (int i = 0; i < mutationCount; i++) {
-            mutationPoint = random.nextInt(80); // Random mutation point between 0 and 80
-            while (newGrid.getSquareList().get(mutationPoint).isPreSolved() ||
-                    mutationPoints.contains(mutationPoint)) {
-                // Will not place point on pre-solved square or square already selected for mutation
-                mutationPoint = random.nextInt(80);
+            // Create mutation points
+            for (int i = 0; i < mutationCount; i++) {
+                mutationPoint = random.nextInt(80); // Random mutation point between 0 and 80
+                while (newGrid.getSquareList().get(mutationPoint).isPreSolved() ||
+                        mutationPoints.contains(mutationPoint)) {
+                    // Will not place point on pre-solved square or square already selected for mutation
+                    mutationPoint = random.nextInt(80);
+                }
+                mutationPoints.add(mutationPoint);
+
+                // Set mutation at respective mutation point
+                newGrid.getSquareList().get(mutationPoint).setValue(random.nextInt(8) + 1); // Random mutation between 1 and 9
             }
-            mutationPoints.add(mutationPoint);
-
-            // Set mutation at respective mutation point
-            newGrid.getSquareList().get(mutationPoint).setValue(random.nextInt(8) + 1); // Random mutation between 1 and 9
-        }
 
 
-        // Generations
+            // Generations
 
-        // Set new generation
-        int genNext = Math.max(fittestA.getGeneration(), fittestB.getGeneration()) + 1;
-        newGrid.setGeneration(genNext);
+            // Set new generation
+            int genNext = Math.max(pA.getGeneration(), pB.getGeneration()) + 1;
+            newGrid.setGeneration(genNext);
 
-        // Update latest generation
-        if (genNext > this.latestGeneration) {
-            this.latestGeneration = genNext;
-        }
-
-
-        // Update Reproduction Pool
-
-        // Find worst-scoring individual in reproduction pool
-        Grid leastFit = null;
-        int maxFitness = 0;
-
-        for (Map.Entry<Grid, Integer> entry : this.reproductionPool.entrySet()) {
-            if (entry.getValue() > maxFitness) {
-                maxFitness = entry.getValue();
-                leastFit = entry.getKey();
+            // Update latest generation
+            if (genNext > this.latestGeneration) {
+                this.latestGeneration = genNext;
             }
-        }
 
-        // Replace worst-scoring individual with new individual
-        int newFitness = this.determineFitness(newGrid);
 
-        if (newFitness <= maxFitness) { // Replacement only occurs if new individual scores equal to or better than worst
+            // Update Reproduction Pool
+
+            // Find worst-scoring individual in reproduction pool
+            Grid leastFit = null;
+            int maxFitness = 0;
+
+            for (Map.Entry<Grid, Integer> entry : this.reproductionPool.entrySet()) {
+                if (entry.getValue() > maxFitness) {
+                    maxFitness = entry.getValue();
+                    leastFit = entry.getKey();
+                }
+            }
+
+            // Replace worst-scoring individual with new individual
+            int newFitness = this.determineFitness(newGrid);
+
+//            if (newFitness <= maxFitness) { // Replacement only occurs if new individual scores equal to or better than worst
+//                this.reproductionPool.remove(leastFit);
+//                this.reproductionPool.put(newGrid, newFitness);
+//            }
+
             this.reproductionPool.remove(leastFit);
             this.reproductionPool.put(newGrid, newFitness);
-        }
-
-        // Update best recorded fitness score, if applicable
-        if (newFitness <= this.bestFitnessScore) {
-            this.bestFitnessScore = newFitness;
-        }
-
-        // Update solution, if applicable
-        if (this.bestFitnessScore == 0) {
-            this.solution = newGrid;
-        }
 
 
-        // For testing purposes
-        if (printData) {
-            System.out.println("new: " + newFitness + " old: " + maxFitness + " Latest gen: " + this.latestGeneration + " Iterations: " + this.iterations);
-        }
-        if (displayGrids) {
-            newGrid.displayGrid(false);
+            int currentBest = this.bestFitnessScore; // For testing purposes
+
+
+            // Update best recorded fitness score, if applicable
+            if (newFitness <= this.bestFitnessScore) {
+                this.bestFitnessScore = newFitness;
+            }
+
+            // Update solution, if applicable
+            if (this.bestFitnessScore == 0) {
+                this.solution = newGrid;
+            }
+
+
+            // For testing purposes
+
+            if ((printData && newFitness < currentBest) || printAllData) {
+                Log.logger.info("new: " + newFitness + " old: " + maxFitness + " Latest gen: " + this.latestGeneration + " Iterations: " + this.iterations);
+            }
+
+            if (displayGrids) {
+                newGrid.displayGrid(false);
+            }
         }
     }
 }
