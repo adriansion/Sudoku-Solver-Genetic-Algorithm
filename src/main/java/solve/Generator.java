@@ -9,6 +9,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
+/**
+ * @author Adrian
+ */
 public class Generator {
     private final Random random = new Random();
     private ArrayList<Grid> parents;
@@ -16,8 +19,6 @@ public class Generator {
     private int latestGeneration = 1, bestFitnessScore = 10000;
 
     private HashMap<Grid, Integer> reproductionPool;
-
-    private Grid solution = null;
 
     /**
      * This method will create a specified number of theoretically possible solutions to the puzzle.
@@ -78,6 +79,15 @@ public class Generator {
         return this.reproductionPool;
     }
 
+    /**
+     * Performs reproduction between pairs of parents and inserts new individuals into reproduction pool
+     *
+     * @param reproductionPool Current reproduction pool
+     * @param parents          List of parents
+     * @param mutationRate     Percentage of non pre-solved squares to be randomly mutated after crossover
+     * @param iteration        Current program iteration, for data purposes
+     * @return Edited reproduction pool with new individuals integrated
+     */
     public HashMap<Grid, Integer> reproduce(HashMap<Grid, Integer> reproductionPool, ArrayList<Grid> parents, double mutationRate, int iteration) {
 
         this.reproductionPool = reproductionPool;
@@ -179,16 +189,11 @@ public class Generator {
                 this.bestFitnessScore = newFitness;
             }
 
-            // Update solution, if applicable
-            if (this.bestFitnessScore == 0) {
-                this.solution = newGrid;
-            }
-
 
 //            // For testing purposes
 //
             if ((newFitness < currentBest)) {
-                Log.logger.info("new: " + newFitness + " old: " + maxFitness + " Latest gen: " + this.latestGeneration + " Iterations: " + iteration);
+                Log.logger.info("New score: " + newFitness + " | Old Score: " + maxFitness + " | Generation: " + genNext + " | Iterations: " + iteration);
             }
 //
 //            if (displayGrids) {
@@ -196,9 +201,5 @@ public class Generator {
 //            }
         }
         return this.reproductionPool;
-    }
-
-    public Grid getSolution() {
-        return this.solution;
     }
 }

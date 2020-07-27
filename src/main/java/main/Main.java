@@ -26,10 +26,7 @@ public class Main {
         Grid GASolve = GA.solve(unsolved);
         if (GASolve != null) {
             verifier.verify(GASolve);
+            Log.logger.info("Solution complete.");
         }
-
-        Log.logger.info("Solution complete.");
-
-
     }
 }

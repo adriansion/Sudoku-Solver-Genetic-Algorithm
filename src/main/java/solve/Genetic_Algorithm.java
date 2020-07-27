@@ -5,7 +5,6 @@ import structure.Grid;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Random;
 
 /**
  * First attempt at a solving algorithm using a stochastic technique.
@@ -18,12 +17,10 @@ import java.util.Random;
  */
 public class Genetic_Algorithm {
 
-    // Configuration
-
     private final int populationSize = 100;
     private final int iterationLimit = 500000;
 
-    private int iterations = 0;
+    private int iteration = 0;
     private int latestGeneration = 1;
     private int bestFitnessScore = 10000;
 
@@ -31,32 +28,36 @@ public class Genetic_Algorithm {
 
     boolean printData = true;
     boolean printAllData = false;
-    boolean printScores = false;
-    boolean displayGrids = false;
     boolean limitIterations = true;
 
-
-    // Objects
 
     private final Selector selector = new Selector();
     private final Generator generator = new Generator();
 
-    private Grid solution;
+    private Grid solution = null;
 
-
-    // Consider having this returned from tournament, and passed to reproduce
     private ArrayList<Grid> parents;
 
 
+    /**
+     * @param unsolved Grid whose solution is being searched for
+     * @return Possible solution to puzzle
+     */
     public Grid solve(Grid unsolved) {
 
         HashMap<Grid, Integer> reproductionPool = generator.produceFirstGeneration(unsolved, this.populationSize);
         Log.logger.info("Production of first generation complete.");
 
         if (this.limitIterations) {
-            for (this.iterations = 1; this.iterations <= this.iterationLimit; this.iterations++) {
+            for (this.iteration = 1; this.iteration <= this.iterationLimit; this.iteration++) {
                 this.parents = this.selector.runTournament(this.populationSize, reproductionPool); // use this for new array list
-                reproductionPool = this.generator.reproduce(reproductionPool, this.parents, this.mutationRate, this.iterations);
+                reproductionPool = this.generator.reproduce(reproductionPool, this.parents, this.mutationRate, this.iteration);
+                this.solution = selector.checkForSolution(reproductionPool);
+                if (this.solution != null) {
+                    Log.logger.info("Solution found. Iteration: " + this.iteration);
+                    break;
+                }
+
 
 //                if (iterations % (iterationLimit / 100) == 0) {
 //                    System.out.println("Iterations: " + (int) (((double) iterations / (double) iterationLimit) * 100) + "% complete");
@@ -64,15 +65,11 @@ public class Genetic_Algorithm {
             }
         } else {
             while (this.bestFitnessScore != 0) {
-                iterations++;
+                iteration++;
                 selector.runTournament(this.populationSize, reproductionPool);
-                generator.reproduce(reproductionPool, this.parents, this.mutationRate, this.iterations);
+                generator.reproduce(reproductionPool, this.parents, this.mutationRate, this.iteration);
             }
         }
-
-        Log.logger.info("Best Fitness Score: " + this.bestFitnessScore);
-        Log.logger.info("Latest Generation: " + this.latestGeneration);
-
 
         return this.solution;
     }
