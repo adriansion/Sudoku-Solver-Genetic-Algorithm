@@ -18,7 +18,7 @@ public class Main {
 
 
         Log.logger.info("Reading and verifying grid.");
-        Grid unsolved = fileReader.createGrid("Grid_Anti-Backtracker");
+        Grid unsolved = fileReader.createGrid("Grid_Easy");
         verifier.verify(unsolved);
 
         Log.logger.info("Beginning solution.");
