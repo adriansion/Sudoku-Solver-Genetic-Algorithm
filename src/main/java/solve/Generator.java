@@ -20,6 +20,13 @@ public class Generator {
 
     private HashMap<Grid, Integer> reproductionPool;
 
+    private Genetic_Algorithm GA;
+
+    public Generator(Genetic_Algorithm GA){
+        this.GA = GA;
+    }
+
+
     /**
      * This method will create a specified number of theoretically possible solutions to the puzzle.
      * Each solution is an individual and each non pre-solved square is a gene.
@@ -192,9 +199,10 @@ public class Generator {
 
 //            // For testing purposes
 //
-            if ((newFitness < currentBest)) {
-                Log.logger.info("New score: " + newFitness + " | Old Score: " + maxFitness + " | Generation: " + genNext + " | Iterations: " + iteration);
-            }
+//---            if ((newFitness < currentBest)) {
+//                Log.logger.info("New score: " + newFitness + " | Old Score: " + maxFitness + " | Generation: " + genNext + " | Iterations: " + iteration);
+//                GA.makeImprovement();
+// ----           }
 //
 //            if (displayGrids) {
 //                newGrid.displayGrid(false);

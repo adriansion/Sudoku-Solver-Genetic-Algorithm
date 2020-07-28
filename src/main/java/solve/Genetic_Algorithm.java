@@ -18,11 +18,13 @@ import java.util.HashMap;
 public class Genetic_Algorithm {
 
     private final int populationSize = 100;
-    private final int iterationLimit = 500000;
+    private final int iterationLimit = 30000;
 
     private int iteration = 0;
     private int latestGeneration = 1;
     private int bestFitnessScore = 10000;
+
+    private int iterationsSinceLastImprovement = 0;
 
     private final double mutationRate = 0.05;
 
@@ -32,7 +34,7 @@ public class Genetic_Algorithm {
 
 
     private final Selector selector = new Selector();
-    private final Generator generator = new Generator();
+    private final Generator generator = new Generator(this);
 
     private Grid solution = null;
 
@@ -43,18 +45,35 @@ public class Genetic_Algorithm {
      * @param unsolved Grid whose solution is being searched for
      * @return Possible solution to puzzle
      */
-    public Grid solve(Grid unsolved) {
+    public Grid solve(Grid unsolved, int completedIterations) {
+        int completedIterations1 = completedIterations;
 
         HashMap<Grid, Integer> reproductionPool = generator.produceFirstGeneration(unsolved, this.populationSize);
-        Log.logger.info("Production of first generation complete.");
+//        Log.logger.info("Production of first generation complete.");
 
         if (this.limitIterations) {
             for (this.iteration = 1; this.iteration <= this.iterationLimit; this.iteration++) {
+                completedIterations1++;
                 this.parents = this.selector.runTournament(this.populationSize, reproductionPool); // use this for new array list
                 reproductionPool = this.generator.reproduce(reproductionPool, this.parents, this.mutationRate, this.iteration);
                 this.solution = selector.checkForSolution(reproductionPool);
                 if (this.solution != null) {
-                    Log.logger.info("Solution found. Iteration: " + this.iteration);
+                    Log.logger.info("Solution found. Iteration: " + this.iteration + ", " + completedIterations1);
+                    break;
+                }
+
+                if (completedIterations1 > 1500000) {
+                    System.out.println("No solution found on " + Thread.currentThread().toString());
+                    break;
+                }
+
+                this.iterationsSinceLastImprovement++;
+                if (iterationsSinceLastImprovement > 20000) {
+                    this.makeImprovement();
+//                    this.iteration = 1;
+//                    reproductionPool = generator.produceFirstGeneration(unsolved, this.populationSize);
+//                    Log.logger.info("Reset reproduction pool -- application likely stuck in local minimum.");
+                    this.solve(unsolved, completedIterations1);
                     break;
                 }
 
@@ -71,6 +90,20 @@ public class Genetic_Algorithm {
             }
         }
 
+//        for (this.iteration = 1; this.iteration <= this.iterationLimit; this.iteration++) {
+//            this.parents = this.selector.runTournament(this.populationSize, reproductionPool);
+//            reproductionPool = this.generator.reproduce(reproductionPool, this.parents, this.mutationRate, this.iteration);
+//            this.solution = selector.checkForSolution(reproductionPool);
+//            if (this.solution != null) {
+//                Log.logger.info("Solution found. Iteration: " + this.iteration);
+//                break;
+//            }
+//        }
+
         return this.solution;
+    }
+
+    public void makeImprovement() {
+        this.iterationsSinceLastImprovement = 0;
     }
 }
