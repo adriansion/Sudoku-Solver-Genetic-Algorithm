@@ -62,7 +62,7 @@ public class Genetic_Algorithm {
                     break;
                 }
 
-                if (completedIterations1 > 1500000) {
+                if (completedIterations1 > 10000) {
                     System.out.println("No solution found on " + Thread.currentThread().toString());
                     break;
                 }

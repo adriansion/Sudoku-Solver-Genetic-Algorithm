@@ -1,6 +1,7 @@
 package solve;
 
 import main.Log;
+import main.Verifier;
 import structure.Grid;
 import structure.Square;
 
@@ -22,7 +23,7 @@ public class Generator {
 
     private Genetic_Algorithm GA;
 
-    public Generator(Genetic_Algorithm GA){
+    public Generator(Genetic_Algorithm GA) {
         this.GA = GA;
     }
 
@@ -38,9 +39,12 @@ public class Generator {
      */
     public HashMap<Grid, Integer> produceFirstGeneration(Grid unsolved, int populationSize) {
         this.reproductionPool = new HashMap<>();
+
+        // Adding as many grids as prescribed population size
         for (int i = 0; i < populationSize; i++) {
             Grid newGrid = new Grid();
 
+            // Setting new grid's pre-solved squares to be identical to those of unsolved grid
             for (Square square : unsolved.getSquareList()) {
                 if (square.getValue() != -1) {
                     newGrid.getSquareList().get(unsolved.getSquareList().indexOf(square)).setValue(square.getValue());
@@ -48,31 +52,22 @@ public class Generator {
                 }
             }
 
+            // Checking each non pre-solved square's local pre-solved squares to set its new random value
             for (Square square : newGrid.getSquareList()) {
                 if (!square.isPreSolved()) {
 
-                    ArrayList<Integer> preSolvedSquares = new ArrayList<>();
+                    ArrayList<Integer> localPreSolvedValues = new ArrayList<>();
 
-                    for (Square bandSquare : newGrid.getBandList().get(square.getBand()).getSquareList()) {
-                        if (bandSquare.isPreSolved()) { // Check if value already in pSS
-                            preSolvedSquares.add(bandSquare.getValue());
-                        }
-                    }
+                    newGrid.getBandList().get(square.getBand()).getSquareList().forEach(
+                            (n) -> localPreSolvedValues.add(n.isPreSolved() ? n.getValue() : 0));
+                    newGrid.getStackList().get(square.getStack()).getSquareList().forEach(
+                            (n) -> localPreSolvedValues.add(n.isPreSolved() ? n.getValue() : 0));
+                    newGrid.getRegionList().get(square.getRegion()).getSquareList().forEach(
+                            (n) -> localPreSolvedValues.add(n.isPreSolved() ? n.getValue() : 0));
 
-                    for (Square stackSquare : newGrid.getStackList().get(square.getStack()).getSquareList()) {
-                        if (stackSquare.isPreSolved()) {
-                            preSolvedSquares.add(stackSquare.getValue());
-                        }
-                    }
-
-                    for (Square regionSquare : newGrid.getRegionList().get(square.getRegion()).getSquareList()) {
-                        if (regionSquare.isPreSolved()) {
-                            preSolvedSquares.add(regionSquare.getValue());
-                        }
-                    }
 
                     int newGene = random.nextInt(9) + 1;
-                    while (preSolvedSquares.contains(newGene)) {
+                    while (localPreSolvedValues.contains(newGene)) {
                         newGene = random.nextInt(9) + 1;
                     }
 

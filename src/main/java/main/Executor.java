@@ -1,8 +1,9 @@
-package solve;
+package main;
 
 import main.GridFileReader;
 import main.Log;
 import main.Verifier;
+import solve.Genetic_Algorithm;
 import structure.Grid;
 
 public class Executor implements Runnable {
@@ -16,7 +17,7 @@ public class Executor implements Runnable {
 
 
 //        Log.logger.info("Reading and verifying grid.");
-        Grid unsolved = fileReader.createGrid("Grid_Easy");
+        Grid unsolved = fileReader.createGrid("Grid_OneSquareMissing");
 //        verifier.verify(unsolved);
 
 

@@ -1,9 +1,5 @@
 package main;
 
-import solve.Executor;
-import solve.Genetic_Algorithm;
-import structure.Grid;
-
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
